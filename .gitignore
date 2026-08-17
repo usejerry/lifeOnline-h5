@@ -1,0 +1,14 @@
+node_modules
+dist
+/vite.config.js
+/output
+/*.png
+/.playwright-cli
+/.temp
+.env.local
+.env.*.local
+*.log
+.DS_Store
+.idea
+.vscode/*
+!.vscode/extensions.json

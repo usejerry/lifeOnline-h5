@@ -1,0 +1,12 @@
+node_modules
+dist
+output
+.playwright-cli
+.temp
+.git
+.vscode
+.env.local
+.env.development.local
+*.log
+/*.png
+design-qa.md
