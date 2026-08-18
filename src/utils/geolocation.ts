@@ -67,10 +67,8 @@ async function locate(noIpLocate: number, enableHighAccuracy: boolean) {
       }
       resolve({
         coordinates: {
-          // longitude: 113.24794 || result.position.lng,
-          // latitude: 23.11467 || result.position.lat,
-          longitude: 113.24794,
-          latitude: 23.11467 ,
+          longitude: result.position.lng,
+          latitude: result.position.lat,
         },
         accuracyM: Math.round(result.accuracy || 0),
       })

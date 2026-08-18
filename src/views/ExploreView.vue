@@ -154,11 +154,8 @@ async function loadLocationAndQuests() {
       locationSource.value = 'device'
     } catch {
       try {
-        const ipPosition = await getIpPosition()
-        const isGuangzhou =
-          ipPosition.cityAdcode?.startsWith('4401') || ipPosition.cityName?.includes('广州')
-        position = isGuangzhou ? ipPosition : guangzhouBrowsePosition
-        locationSource.value = isGuangzhou ? 'ip' : 'city'
+        position = await getIpPosition()
+        locationSource.value = 'ip'
       } catch {
         position = guangzhouBrowsePosition
         locationSource.value = 'city'
@@ -174,6 +171,9 @@ async function loadLocationAndQuests() {
     )
     context.value = nearby.context
     selectedQuest.value = quests.value[0] ?? null
+    if (!nearby.context.hasNearbyQuests) {
+      showToast('你附近暂无支线，已为你定位到上下九附近')
+    }
   } catch {
     coordinates.value = null
     locationAccuracyM.value = null
@@ -236,7 +236,8 @@ onMounted(async () => {
           class="real-map"
           :quests="quests"
           :selected-marker-id="selectedQuest?.markerId ?? null"
-          :show-user-location="locationSource === 'device'"
+          :show-user-location="locationSource === 'device' && context?.hasNearbyQuests === true"
+          :map-center="context?.mapCenter ?? coordinates"
           :user-location="coordinates"
           @select="selectedQuest = $event"
         />
@@ -252,11 +253,13 @@ onMounted(async () => {
 
         <p v-if="coordinates" class="location-accuracy">
           {{
-            locationSource === 'device'
-              ? `设备定位 · 精度约 ${locationAccuracyM ?? '--'} 米`
-              : locationSource === 'ip'
-                ? `IP 定位：${locationCityName || '广州'} · 仅供浏览`
-                : '广州城市浏览 · 不是我的位置'
+            context?.hasNearbyQuests === false
+              ? '你附近暂无支线，已定位到上下九附近'
+              : locationSource === 'device'
+                ? `设备定位 · 精度约 ${locationAccuracyM ?? '--'} 米`
+                : locationSource === 'ip'
+                  ? `IP 定位：${locationCityName || '广州'} · 仅供浏览`
+                  : '广州城市浏览 · 不是我的位置'
           }}
         </p>
 

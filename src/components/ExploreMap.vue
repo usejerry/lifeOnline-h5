@@ -39,6 +39,7 @@ const props = defineProps<{
   quests: NearbyQuest[]
   selectedMarkerId: string | null
   showUserLocation: boolean
+  mapCenter: Coordinates
   userLocation: Coordinates
 }>()
 
@@ -133,7 +134,7 @@ async function initializeMap() {
   try {
     amap = (await load({ key, version: '2.0' })) as AMapNamespace
     map = new amap.Map(mapContainer.value, {
-      center: [props.userLocation.longitude, props.userLocation.latitude],
+      center: [props.mapCenter.longitude, props.mapCenter.latitude],
       features: ['bg', 'road', 'building'],
       mapStyle: 'amap://styles/dark',
       showLabel: false,
@@ -154,7 +155,7 @@ watch(() => props.quests, renderMarkers)
 watch(() => props.selectedMarkerId, updateSelectedMarker)
 watch(() => props.showUserLocation, renderMarkers)
 watch(
-  () => props.userLocation,
+  () => props.mapCenter,
   (location) => {
     map?.setCenter([location.longitude, location.latitude])
     renderMarkers()

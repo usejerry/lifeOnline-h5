@@ -21,6 +21,8 @@ export interface ExploreContext {
   cityName: string | null
   weather: { weather: string; temperature: number | null } | null
   mapWebServiceConfigured: boolean
+  hasNearbyQuests: boolean
+  mapCenter: Coordinates
 }
 
 export interface WeeklyTheme {

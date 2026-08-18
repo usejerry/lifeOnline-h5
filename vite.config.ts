@@ -12,15 +12,15 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/_AMapService': {
-        target: 'https://earthlifeonlie.cn',
+        target: 'http://localhost:3000',
         changeOrigin: true,
       },
       '/api': {
-        target: 'https://earthlifeonlie.cn',
+        target: 'http://localhost:3000',
         changeOrigin: true,
       },
       '/uploads': {
-        target: 'https://earthlifeonlie.cn',
+        target: 'http://localhost:3000',
         changeOrigin: true,
       },
     },
