@@ -126,7 +126,6 @@ async function initializeMap() {
   }
 
   // 生产环境不把安全密钥打包到 JS；高德请求统一经过 NestJS 同域代理。
-  console.log('VITE_AMAP_SECURITY_CODE', props.userLocation.longitude, props.userLocation.latitude)
   window._AMapSecurityConfig = {
     serviceHost: `${window.location.origin}/_AMapService`,
     // securityJsCode: import.meta.env.VITE_AMAP_SECURITY_CODE,
@@ -144,7 +143,6 @@ async function initializeMap() {
     })
     renderMarkers()
     status.value = 'ready'
-    console.log('高德地图加载成功', amap)
   } catch (error) {
     console.error('高德地图加载失败', error)
     status.value = 'error'
@@ -198,11 +196,13 @@ onBeforeUnmount(() => {
 }
 
 :deep(.amap-logo) {
-  bottom: 74px !important;
+  display: none !important;
+  bottom: 96px !important;
 }
 
 :deep(.amap-copyright) {
-  bottom: 78px !important;
+  display: none !important;
+  bottom: 100px !important;
 }
 
 .map-status {

@@ -1,6 +1,16 @@
 <script setup lang="ts">
-import { PhArrowRight, PhCloudSun, PhSparkle, PhStar } from '@phosphor-icons/vue'
-import { computed, onMounted, ref, watch } from 'vue'
+import {
+  PhArrowRight,
+  PhBicycle,
+  PhCloudSun,
+  PhMapPin,
+  PhNavigationArrow,
+  PhPersonSimpleWalk,
+  PhSparkle,
+  PhStar,
+  PhX,
+} from '@phosphor-icons/vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import {
@@ -21,6 +31,7 @@ import ExploreMap from '@/components/ExploreMap.vue'
 import { getBrowserPosition, getIpPosition } from '@/utils/geolocation'
 
 type ExploreMode = 'map' | 'list' | 'saved'
+type NavigationMode = 'walk' | 'ride'
 
 const guangzhouBrowsePosition = {
   coordinates: { longitude: 113.2806, latitude: 23.1251 },
@@ -37,6 +48,7 @@ const selectedQuest = ref<NearbyQuest | null>(null)
 const savedIds = ref<number[]>([])
 const discoveredIds = ref<number[]>([])
 const coordinates = ref<Coordinates | null>(null)
+const mapFocus = ref<Coordinates | null>(null)
 const locationAccuracyM = ref<number | null>(null)
 const locationSource = ref<'device' | 'ip' | 'city' | null>(null)
 const locationCityName = ref('')
@@ -47,6 +59,9 @@ const weeklyTheme = ref<WeeklyTheme | null>(null)
 const loading = ref(true)
 const accepting = ref(false)
 const saving = ref(false)
+const navigationOpen = ref(false)
+const navigationMode = ref<NavigationMode>('walk')
+const routeOverlay = ref<HTMLElement | null>(null)
 const toast = ref('')
 let toastTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -70,6 +85,19 @@ const weatherLabel = computed(() => {
   if (!weather) return '天气数据待接入'
   return `${weather.temperature ?? '--'}°C ${weather.weather}`
 })
+const navigationUrl = computed(() => {
+  if (!selectedQuest.value) return '#'
+  const destination = selectedQuest.value
+  const params = new URLSearchParams({
+    to: `${destination.longitude},${destination.latitude},${locationLabel(destination)}`,
+    mode: navigationMode.value,
+    policy: '1',
+    src: 'lifeonline',
+    coordinate: 'gaode',
+    callnative: '1',
+  })
+  return `https://uri.amap.com/navigation?${params.toString()}`
+})
 
 function showToast(message: string) {
   toast.value = message
@@ -79,7 +107,19 @@ function showToast(message: string) {
 
 function selectQuest(quest: NearbyQuest) {
   selectedQuest.value = quest
+  mapFocus.value = { longitude: quest.longitude, latitude: quest.latitude }
   if (mode.value !== 'map') mode.value = 'map'
+}
+
+async function openNavigation() {
+  if (!selectedQuest.value) return
+  navigationOpen.value = true
+  await nextTick()
+  routeOverlay.value?.focus()
+}
+
+function closeNavigation() {
+  navigationOpen.value = false
 }
 
 function locationLabel(quest: NearbyQuest) {
@@ -162,6 +202,7 @@ async function loadLocationAndQuests() {
       }
     }
     coordinates.value = position.coordinates
+    mapFocus.value = null
     locationAccuracyM.value = position.accuracyM
     locationCityName.value = position.cityName ?? ''
     const nearby = await getNearbyQuests(position.coordinates, 50_000, position.cityAdcode)
@@ -237,7 +278,7 @@ onMounted(async () => {
           :quests="quests"
           :selected-marker-id="selectedQuest?.markerId ?? null"
           :show-user-location="locationSource === 'device' && context?.hasNearbyQuests === true"
-          :map-center="context?.mapCenter ?? coordinates"
+          :map-center="mapFocus ?? context?.mapCenter ?? coordinates"
           :user-location="coordinates"
           @select="selectedQuest = $event"
         />
@@ -287,7 +328,6 @@ onMounted(async () => {
     </section>
 
     <article v-if="selectedQuest" class="quest-card">
-      <div class="torn-edge" aria-hidden="true"></div>
       <div class="quest-copy">
         <h2>{{ selectedQuest.title }}</h2>
         <p class="meta">
@@ -298,10 +338,15 @@ onMounted(async () => {
           <span>{{ selectedQuest.settingLabel }}</span>
         </p>
         <p v-if="selectedQuest.prompt" class="prompt">{{ selectedQuest.prompt }}</p>
-        <div class="destination">
-          <span>目标地点</span>
-          <strong>{{ locationLabel(selectedQuest) }}</strong>
-        </div>
+        <button class="destination" type="button" @click="openNavigation">
+          <PhMapPin weight="fill" />
+          <span>
+            <small>目标地点</small>
+            <strong>{{ locationLabel(selectedQuest) }}</strong>
+          </span>
+          <em>去导航</em>
+          <PhArrowRight />
+        </button>
         <button class="accept-button" :disabled="accepting" @click="handleAccept">
           {{ accepting ? '正在处理…' : needsDiscovery ? '发现隐藏支线' : '接受支线' }}
           <PhArrowRight />
@@ -317,6 +362,74 @@ onMounted(async () => {
         </button>
       </div>
     </article>
+
+    <Transition name="route-sheet">
+      <div
+        v-if="navigationOpen && selectedQuest"
+        ref="routeOverlay"
+        class="route-overlay"
+        tabindex="-1"
+        @click.self="closeNavigation"
+        @keydown.esc="closeNavigation"
+      >
+        <section class="route-sheet" role="dialog" aria-modal="true" aria-labelledby="route-title">
+          <button
+            class="route-close"
+            type="button"
+            aria-label="关闭路线选择"
+            @click="closeNavigation"
+          >
+            <PhX />
+          </button>
+
+          <div class="route-heading">
+            <span class="route-icon"><PhNavigationArrow weight="fill" /></span>
+            <div>
+              <p>准备出发</p>
+              <h2 id="route-title">{{ locationLabel(selectedQuest) }}</h2>
+            </div>
+          </div>
+
+          <p class="route-address">
+            {{ selectedQuest.targetAddress || selectedQuest.settingLabel }}
+          </p>
+
+          <div class="route-modes" role="radiogroup" aria-label="出行方式">
+            <button
+              type="button"
+              role="radio"
+              :aria-checked="navigationMode === 'walk'"
+              :class="{ active: navigationMode === 'walk' }"
+              @click="navigationMode = 'walk'"
+            >
+              <PhPersonSimpleWalk />
+              <span>步行</span>
+            </button>
+            <button
+              type="button"
+              role="radio"
+              :aria-checked="navigationMode === 'ride'"
+              :class="{ active: navigationMode === 'ride' }"
+              @click="navigationMode = 'ride'"
+            >
+              <PhBicycle />
+              <span>骑行</span>
+            </button>
+          </div>
+
+          <a
+            class="start-navigation"
+            :href="navigationUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <PhNavigationArrow weight="fill" />
+            开始实时导航
+          </a>
+          <p class="route-note">将打开高德地图，并由高德使用你的实时位置持续导航。</p>
+        </section>
+      </div>
+    </Transition>
 
     <Transition name="toast">
       <p v-if="toast" class="toast">{{ toast }}</p>
@@ -484,7 +597,7 @@ button {
   position: absolute;
   z-index: 4;
   right: 16px;
-  bottom: 34px;
+  bottom: 128px;
   margin: 0;
   padding: 6px 10px;
   color: #cbbda8;
@@ -627,25 +740,20 @@ button {
 .quest-card {
   position: relative;
   z-index: 8;
-  margin-top: -22px;
+  width: calc(100% - 24px);
+  margin: -28px 12px 0;
+  overflow: hidden;
   color: #17272a;
+  border: 1px solid rgba(78, 64, 47, 0.14);
+  border-radius: 26px;
   background: #f3e5c9 url('@/assets/paper-texture.png') center / 520px auto repeat;
-  border-radius: 0 0 28px 28px;
-  box-shadow: 0 -16px 40px rgba(2, 10, 12, 0.16);
-}
-
-.torn-edge {
-  position: absolute;
-  right: 0;
-  bottom: calc(100% - 1px);
-  left: 0;
-  height: 66px;
-  background: url('@/assets/paper-torn-edge.png') center bottom / 100% 100% no-repeat;
-  pointer-events: none;
+  box-shadow:
+    0 -10px 32px rgba(2, 10, 12, 0.2),
+    inset 0 1px rgba(255, 249, 235, 0.72);
 }
 
 .quest-copy {
-  padding: 25px 28px 24px;
+  padding: 30px 26px 24px;
 
   h2 {
     margin: 0;
@@ -685,15 +793,32 @@ button {
 
 .destination {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: 34px minmax(0, 1fr) auto 18px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
   margin-top: 19px;
-  padding-top: 18px;
+  padding: 18px 0 4px;
+  color: #17272a;
+  text-align: left;
   border-top: 1px solid rgba(75, 68, 57, 0.18);
+  background: transparent;
+
+  > svg:first-child {
+    width: 28px;
+    height: 28px;
+    color: #e6654e;
+  }
 
   span {
+    display: grid;
+    min-width: 0;
+    gap: 3px;
+  }
+
+  small {
     color: #777065;
-    font-size: 14px;
+    font-size: 12px;
   }
 
   strong {
@@ -702,6 +827,34 @@ button {
       500 17px/1.5 'Noto Serif SC',
       serif;
     overflow-wrap: anywhere;
+  }
+
+  em {
+    color: #c3513e;
+    font-size: 13px;
+    font-style: normal;
+    white-space: nowrap;
+  }
+
+  > svg:last-child {
+    width: 18px;
+    height: 18px;
+    color: #9a685c;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  &:active {
+    transform: scale(0.99);
+  }
+
+  &:hover > svg:last-child {
+    transform: translateX(3px);
+  }
+
+  &:focus-visible {
+    border-radius: 12px;
+    outline: 2px solid #d85f49;
+    outline-offset: 4px;
   }
 }
 
@@ -753,6 +906,196 @@ button {
   }
 }
 
+.route-overlay {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(3, 12, 14, 0.68);
+  backdrop-filter: blur(5px);
+}
+
+.route-sheet {
+  position: relative;
+  width: min(100%, 480px);
+  padding: 24px 22px calc(22px + env(safe-area-inset-bottom));
+  color: #f3e5cd;
+  border: 1px solid rgba(239, 222, 196, 0.18);
+  border-radius: 22px;
+  background: #122426;
+  box-shadow: 0 24px 64px rgba(1, 8, 9, 0.42);
+}
+
+.route-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  color: #d7c7b0;
+  border-radius: 50%;
+  background: rgba(239, 222, 196, 0.08);
+
+  svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #ff765c;
+    outline-offset: 2px;
+  }
+}
+
+.route-heading {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  padding-right: 42px;
+
+  p,
+  h2 {
+    margin: 0;
+  }
+
+  p {
+    color: #ff8069;
+    font-size: 12px;
+  }
+
+  h2 {
+    margin-top: 3px;
+    font:
+      600 23px/1.35 'Noto Serif SC',
+      serif;
+    overflow-wrap: anywhere;
+  }
+}
+
+.route-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  color: #173034;
+  border-radius: 15px;
+  background: #ff765c;
+  transform: rotate(-12deg);
+
+  svg {
+    width: 25px;
+    height: 25px;
+  }
+}
+
+.route-address {
+  margin: 18px 0 0 62px;
+  color: #a99b88;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.route-modes {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 22px;
+
+  button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 52px;
+    gap: 8px;
+    color: #bcae9a;
+    border: 1px solid rgba(239, 222, 196, 0.14);
+    border-radius: 15px;
+    background: rgba(239, 222, 196, 0.05);
+
+    &.active {
+      color: #ffe7dc;
+      border-color: rgba(255, 118, 92, 0.58);
+      background: rgba(255, 118, 92, 0.14);
+      box-shadow: inset 0 0 0 1px rgba(255, 118, 92, 0.12);
+    }
+
+    &:active {
+      transform: scale(0.98);
+    }
+
+    &:focus-visible {
+      outline: 2px solid #ff765c;
+      outline-offset: 2px;
+    }
+  }
+
+  svg {
+    width: 23px;
+    height: 23px;
+  }
+}
+
+.start-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  margin-top: 14px;
+  gap: 10px;
+  color: #fff8ee;
+  text-decoration: none;
+  border-radius: 15px;
+  background: #e8664f;
+  box-shadow: 0 14px 28px rgba(9, 26, 28, 0.36);
+  font-weight: 600;
+
+  svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #f7dfc5;
+    outline-offset: 3px;
+  }
+}
+
+.route-note {
+  margin: 12px 4px 0;
+  color: #8f8272;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.route-sheet-enter-active,
+.route-sheet-leave-active {
+  transition: opacity 0.28s ease;
+
+  .route-sheet {
+    transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+.route-sheet-enter-from,
+.route-sheet-leave-to {
+  opacity: 0;
+
+  .route-sheet {
+    transform: translateY(24px);
+  }
+}
+
 .toast {
   position: fixed;
   z-index: 100;
@@ -790,6 +1133,20 @@ button {
 
   .title-row p {
     font-size: 13px;
+  }
+
+  .route-overlay {
+    padding: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-sheet-enter-active,
+  .route-sheet-leave-active,
+  .route-sheet-enter-active .route-sheet,
+  .route-sheet-leave-active .route-sheet,
+  .destination > svg:last-child {
+    transition: none;
   }
 }
 </style>
