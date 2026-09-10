@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 
 import { useJourneyStore } from '@/stores/journey'
 import { useAuthStore } from '@/stores/auth'
+import DailySignIn from '@/components/DailySignIn.vue'
 
 const router = useRouter()
 const journey = useJourneyStore()
@@ -37,6 +38,7 @@ onMounted(() => void journey.initialize())
   <main class="page-shell">
     <p class="page-kicker">我的世界</p>
     <h1>每一次出发，<br />都在重新编辑生活</h1>
+    <DailySignIn />
 
     <div class="world-stat">
       <strong>{{ completedCount }}</strong
