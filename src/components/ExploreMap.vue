@@ -120,6 +120,7 @@ function updateSelectedMarker() {
 
 async function initializeMap() {
   const key = import.meta.env.VITE_AMAP_KEY
+
   if (!key || !mapContainer.value) {
     status.value = 'error'
     return

@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import { authRoutes } from './modules/auth'
-import { getAccessToken } from '@/api/http'
+import { getAccessToken, restoreSession } from '@/api/http'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -37,7 +37,8 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
+  if (to.meta.requiresAuth) await restoreSession()
   if (to.meta.requiresAuth && !getAccessToken()) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
@@ -46,3 +47,9 @@ router.beforeEach((to) => {
 })
 
 export default router
+
+window.addEventListener('auth:cleared', () => {
+  const route = router.currentRoute.value
+  if (route.meta.requiresAuth)
+    void router.replace({ name: 'login', query: { redirect: route.fullPath } })
+})

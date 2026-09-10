@@ -1,12 +1,28 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { useJourneyStore } from '@/stores/journey'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const journey = useJourneyStore()
+const auth = useAuthStore()
+const signingOut = ref(false)
+const logoutError = ref('')
+async function signOut(all = false) {
+  signingOut.value = true
+  logoutError.value = ''
+  try {
+    await auth.signOut(all)
+    await router.replace('/login')
+  } catch {
+    logoutError.value = '退出失败，请检查网络后重试'
+  } finally {
+    signingOut.value = false
+  }
+}
 const { mood, availableTime, scene, completedCount } = storeToRefs(journey)
 
 function resetPreferences() {
@@ -36,6 +52,13 @@ onMounted(() => void journey.initialize())
       <span>行动场景</span><strong>{{ scene }}</strong>
     </div>
     <button class="reset" @click="resetPreferences">重新设置偏好</button>
+    <div>
+      <button class="reset" :disabled="signingOut" @click="signOut()">退出登录</button>
+      <button class="reset" :disabled="signingOut" style="margin-left: 24px" @click="signOut(true)">
+        退出全部设备
+      </button>
+      <p v-if="logoutError" role="alert">{{ logoutError }}</p>
+    </div>
   </main>
 </template>
 

@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "lint": "eslint . --fix",
     "format": "prettier --write .",
-    "type-check": "vue-tsc --noEmit -p tsconfig.app.json"
+    "type-check": "vue-tsc --noEmit -p tsconfig.app.json",
+    "test:auth": "node --test test/auth-http.test.mjs"
   },
   "dependencies": {
     "@amap/amap-jsapi-loader": "^1.0.1",

@@ -61,6 +61,12 @@ export const useJourneyStore = defineStore('journey', () => {
   const records = ref<QuestRecord[]>([])
   const loading = ref(false)
   const editingPreference = ref(false)
+  window.addEventListener('auth:cleared', () => {
+    activeRecord.value = null
+    records.value = []
+    onboarded.value = false
+    editingPreference.value = false
+  })
 
   const activeQuest = computed(() => activeRecord.value?.quest ?? null)
   const completedCount = computed(
