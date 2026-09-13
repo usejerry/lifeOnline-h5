@@ -14,6 +14,7 @@ export interface MeResponse {
   username: string
   email: string | null
   preference: Preference | null
+  growth: { pointsBalance: number; level: number } | null
   stats: { completedQuestCount: number }
 }
 

@@ -15,8 +15,11 @@ import { getMe, type MeResponse } from '@/api/me'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<MeResponse | null>(null)
+  const loadingMe = ref(false)
+  const meError = ref('')
   window.addEventListener('auth:cleared', () => {
     user.value = null
+    meError.value = ''
   })
 
   async function signIn(payload: LoginPayload) {
@@ -30,15 +33,22 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function loadMe() {
-    await restoreSession()
-    if (!getAccessToken()) return null
+    loadingMe.value = true
+    meError.value = ''
     try {
+      await restoreSession()
+      if (!getAccessToken()) return null
       user.value = await getMe()
       return user.value
     } catch (error) {
-      if (!axios.isAxiosError(error) || error.response?.status !== 401) throw error
+      if (!axios.isAxiosError(error) || error.response?.status !== 401) {
+        meError.value = '积分余额更新失败，请重试'
+        throw error
+      }
       user.value = null
       return null
+    } finally {
+      loadingMe.value = false
     }
   }
 
@@ -50,5 +60,5 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
   }
 
-  return { user, signIn, loadMe, signOut }
+  return { user, loadingMe, meError, signIn, loadMe, signOut }
 })

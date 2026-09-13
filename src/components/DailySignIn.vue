@@ -9,6 +9,7 @@ import {
   type SignInToday,
 } from '@/api/sign-in'
 
+const emit = defineEmits<{ changed: [] }>()
 const today = ref<SignInToday | null>(null)
 const loading = ref(true)
 const submitting = ref(false)
@@ -50,11 +51,15 @@ async function checkIn() {
   message.value = ''
   try {
     const result = await signInToday()
-    today.value = await getSignInToday()
+    // 签到已经确认；后续查询失败也不应让用户再次提交签到。
+    today.value = { ...today.value, signedIn: true }
     message.value = result === false ? '今天已经留下脚印啦' : '今日签到成功，明天再见'
+    await loadToday()
   } catch {
     error.value = '未能确认签到结果，请重试'
   } finally {
+    // 重新读取服务端余额，兼容重复签到和响应丢失的情况。
+    emit('changed')
     submitting.value = false
   }
 }
@@ -156,7 +161,7 @@ onUnmounted(() => {
     </div>
     <p v-if="message" class="feedback" role="status">{{ message }}</p>
     <p v-if="error" class="feedback error" role="alert">
-      {{ error }} <button @click="loadToday" :disabled="loading || submitting">重新获取</button>
+      {{ error }} <button :disabled="loading || submitting" @click="loadToday">重新获取</button>
     </p>
   </section>
   <Teleport to="body">
