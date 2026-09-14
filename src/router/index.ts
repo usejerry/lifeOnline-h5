@@ -26,6 +26,12 @@ const router = createRouter({
       meta: { title: '记录', showNavigation: true, requiresAuth: true },
     },
     {
+      path: '/messages',
+      name: 'messages',
+      component: () => import('@/views/MessagesView.vue'),
+      meta: { title: '消息中心', showNavigation: true, requiresAuth: true },
+    },
+    {
       path: '/profile',
       name: 'profile',
       component: () => import('@/views/ProfileView.vue'),
@@ -34,7 +40,7 @@ const router = createRouter({
     { path: '/', redirect: '/today' },
     { path: '/:pathMatch(.*)*', redirect: '/today' },
   ],
-  scrollBehavior: () => ({ top: 0 }),
+  scrollBehavior: (to) => (to.hash ? { el: to.hash, top: 20, behavior: 'smooth' } : { top: 0 }),
 })
 
 router.beforeEach(async (to) => {

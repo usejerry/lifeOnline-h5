@@ -10,7 +10,8 @@
     "lint": "eslint . --fix",
     "format": "prettier --write .",
     "type-check": "vue-tsc --noEmit -p tsconfig.app.json",
-    "test:auth": "node --test test/auth-http.test.mjs"
+    "test:auth": "node --test test/auth-http.test.mjs",
+    "test:messages": "node --test test/messages-store.test.mjs"
   },
   "dependencies": {
     "@amap/amap-jsapi-loader": "^1.0.1",

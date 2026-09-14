@@ -19,6 +19,7 @@ import {
   type QuestRecord,
 } from '@/api/quest-record'
 import { useAuthStore } from './auth'
+import { useMessagesStore } from './messages'
 
 export type Mood = '松弛' | '新鲜' | '成就感' | '陪伴'
 export type AvailableTime = '5分钟' | '20分钟' | '1小时'
@@ -51,6 +52,7 @@ const timeMinutes: Record<AvailableTime, number> = { '5分钟': 5, '20分钟': 2
 
 export const useJourneyStore = defineStore('journey', () => {
   const auth = useAuthStore()
+  const messages = useMessagesStore()
   const onboarded = ref(false)
   const mood = ref<Mood>('新鲜')
   const availableTime = ref<AvailableTime>('20分钟')
@@ -135,6 +137,7 @@ export const useJourneyStore = defineStore('journey', () => {
     if (!quest.value) return null
     activeRecord.value = await acceptQuestApi(quest.value.id)
     activeRecord.value.quest = quest.value
+    void messages.refresh(true)
     return activeRecord.value
   }
 
@@ -143,6 +146,8 @@ export const useJourneyStore = defineStore('journey', () => {
     await abandonQuestApi(activeRecord.value.id)
     activeRecord.value = null
     await loadRecommendation()
+    // 支线操作已经成功，消息刷新失败不能反向改变这次业务结果。
+    void messages.refresh(true)
   }
 
   async function completeQuest(note: string, image?: File | null, coordinates?: Coordinates) {
@@ -151,6 +156,7 @@ export const useJourneyStore = defineStore('journey', () => {
     activeRecord.value = null
     records.value.unshift(completed)
     if (auth.user) auth.user.stats.completedQuestCount += 1
+    void messages.refresh(true)
     return completed
   }
 

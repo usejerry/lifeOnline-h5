@@ -106,7 +106,22 @@ function closeResult() {
   selectedImage.value = null
 }
 
-onMounted(() => void journey.initialize())
+onMounted(() => {
+  void journey
+    .initialize()
+    .then(async () => {
+      const requestedId = Number(route.query.recordId)
+      if (!Number.isInteger(requestedId) || requestedId <= 0) return
+      if (activeRecord.value?.id === requestedId) return
+
+      // 消息只能继续它关联的原记录，不能把旧提醒误导向后来接取的新支线。
+      showToast('这条支线已经结束，无法继续')
+      const query = { ...route.query }
+      delete query.recordId
+      await router.replace({ query })
+    })
+    .catch(() => showToast('页面加载失败，请稍后重试'))
+})
 onBeforeUnmount(() => {
   if (preview.value) URL.revokeObjectURL(preview.value)
 })

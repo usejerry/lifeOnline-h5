@@ -7,10 +7,12 @@ import { useRouter } from 'vue-router'
 import { useJourneyStore } from '@/stores/journey'
 import { useAuthStore } from '@/stores/auth'
 import DailySignIn from '@/components/DailySignIn.vue'
+import { useMessagesStore } from '@/stores/messages'
 
 const router = useRouter()
 const journey = useJourneyStore()
 const auth = useAuthStore()
+const messages = useMessagesStore()
 const pointsBalance = computed(() =>
   auth.user ? (auth.user.growth?.pointsBalance ?? 0).toLocaleString('zh-CN') : '—',
 )
@@ -21,6 +23,12 @@ async function refreshGrowth() {
   } catch {
     // loadMe 保存错误状态，卡片提供重试入口。
   }
+}
+
+function onSignInChanged() {
+  void refreshGrowth()
+  // 签到结果与消息阅读状态相互独立，只刷新关联事项状态和未读数。
+  void messages.refresh(true)
 }
 
 function onVisible() {
@@ -81,7 +89,7 @@ onUnmounted(() => document.removeEventListener('visibilitychange', onVisible))
         <button :disabled="auth.loadingMe" @click="refreshGrowth">重新获取</button>
       </p>
     </section>
-    <DailySignIn @changed="refreshGrowth" />
+    <DailySignIn @changed="onSignInChanged" />
 
     <div class="world-stat">
       <strong>{{ completedCount }}</strong

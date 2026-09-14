@@ -125,6 +125,7 @@ onUnmounted(() => {
 
 <template>
   <section
+    id="daily-sign-in"
     class="check-in-card"
     aria-labelledby="check-in-title"
     :aria-busy="loading || submitting"
